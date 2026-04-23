@@ -1,14 +1,12 @@
 import streamlit as st
 import dashscope
 from dashscope import MultiModalConversation
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 import base64
 
 # ---------------------- 页面配置 ----------------------
 st.set_page_config(page_title="英语课文结构分析工具", layout="wide")
-st.title("📖 AI英语课文结构与衔接词分析工具")
-st.markdown("### 上传课文图片 → AI自动分析结构 + 生成衔接词词云")
+st.title("📖 AI英语课文结构分析工具")
+st.markdown("### 上传课文图片 → AI自动分析结构 + 生成思维导图")
 
 # ---------------------- API KEY 设置 ----------------------
 try:
@@ -30,7 +28,7 @@ if uploaded_file is not None:
     base64_data = base64.b64encode(bytes_data).decode("utf-8")
 
     # ---------------------- AI 分析 ----------------------
-    with st.spinner("⌛ AI正在分析课文..."):
+    with st.spinner("⌛ AI正在分析课文结构..."):
         try:
             response = MultiModalConversation.call(
                 model="qwen-vl-plus",
@@ -38,7 +36,7 @@ if uploaded_file is not None:
                     {
                         "role": "user",
                         "content": [
-                            {"text": "请分析这张英语课文图片，完成以下任务：\n1. 提取课文完整文本\n2. 提炼文章写作结构（主题句+观点+细节）\n3. 提取所有衔接词，按递进/转折/因果/举例/总结分类，并给出例句"},
+                            {"text": "请分析这张英语课文图片，完成以下任务：\n1. 提取课文完整文本\n2. 提炼文章写作结构，以「思维导图」的层级形式呈现（用Markdown的多级列表格式，一级标题为文章主题，二级为段落主题，三级为观点/支撑细节，四级为关键信息/例子）\n3. 提取所有衔接词，按递进/转折/因果/举例/总结分类，并给出例句"},
                             {"image": f"data:image/jpeg;base64,{base64_data}"}
                         ]
                     }
@@ -50,30 +48,28 @@ if uploaded_file is not None:
             st.stop()
 
     # ---------------------- 显示结果 ----------------------
-    st.subheader("📋 课文结构与衔接词分析")
+    st.subheader("📋 课文完整文本与衔接词分析")
     st.markdown(result)
 
-    # ---------------------- 词云生成 ----------------------
-    st.subheader("☁️ 衔接词词云")
-    try:
-        words = []
-        for line in result.split("\n"):
-            if any(key in line for key in ["递进", "转折", "因果", "举例", "总结"]):
-                line = line.replace("：", ":").replace(",", " ")
-                parts = line.split(":")[-1].strip()
-                words.extend([w.strip() for w in parts.split() if w.strip()])
+    # ---------------------- 提取并展示思维导图结构 ----------------------
+    st.subheader("🧠 课文写作结构思维导图")
+    st.info("下面是AI提炼的课文写作结构层级，可直接用于课堂板书或讲解")
 
-        if words:
-            wc = WordCloud(
-                width=800, height=400,
-                background_color="white"
-            ).generate(" ".join(words))
-
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.imshow(wc, interpolation="bilinear")
-            ax.axis("off")
-            st.pyplot(fig)
-        else:
-            st.info("未提取到足够衔接词，无法生成词云")
-    except:
-        st.info("词云生成失败")
+    # 解析Markdown层级结构，展示为清晰的层级
+    for line in result.split("\n"):
+        if line.strip() == "":
+            continue
+        # 一级标题（文章主题）
+        if line.startswith("# "):
+            st.markdown(f"### {line[2:]}")
+        # 二级标题（段落主题）
+        elif line.startswith("## "):
+            st.markdown(f"#### {line[3:]}")
+        # 三级标题/列表项（观点/细节）
+        elif line.startswith("### ") or line.startswith("- "):
+            st.markdown(f"- {line.split(' ', 1)[1]}")
+        # 四级列表项（关键信息/例子）
+        elif line.startswith("  - "):
+            st.markdown(f"  - {line.split(' ', 2)[2]}")
+        elif line.startswith("    - "):
+            st.markdown(f"    - {line.split(' ', 3)[3]}")
