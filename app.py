@@ -20,7 +20,7 @@ li {font-size: 19px !important; line-height: 1.6;}
 # 页面基础配置
 st.set_page_config(page_title="Guangdong Gaokao Letter Grader", layout="wide")
 st.title("✍️ 广东高考英语建议信 作文评分工具")
-st.markdown("### 上传作文照片 → 严格按广东高考评分标准打分 + 专业修改建议")
+st.markdown("### 上传作文照片 → 固定满分15分 严格按高考标准打分点评")
 
 # 加载通义千问API密钥
 try:
@@ -30,10 +30,12 @@ except:
     st.warning("请先在 Streamlit Secrets 配置 TONGYI_API_KEY")
     st.stop()
 
-# 作文上传与总分设置（高考常用满分25分）
+# 固定满分15分，取消手动滑块
+FULL_SCORE = 15
+
+# 上传学生建议信作文图片
 st.header("上传学生建议信作文图片")
 essay_image = st.file_uploader("选择图片 jpg / png / jpeg", type=["jpg", "png", "jpeg"])
-total_score = st.slider("作文满分设置（广东高考建议信满分25）", min_value=10, max_value=25, value=25, step=1)
 
 if essay_image is not None:
     st.image(essay_image, caption="待评学生建议信", use_column_width=True)
@@ -59,27 +61,28 @@ Only output the pure letter text, no extra explanation, no translation."""
             )
             essay_text = ocr_response["output"]["choices"][0]["message"]["content"][0]["text"]
 
-            # 第二步：严格按照广东高考英语建议信评分标准阅卷
+            # 第二步：严格广东高考建议信评分标准 固定满分15分
             grade_prompt = f"""You are an experienced English examiner for Guangdong Gaokao.
-Grade this student's **advice letter** strictly following **Guangdong Gaokao English scoring criteria**, total score out of {total_score}.
+Grade this student's **advice letter** strictly following **Guangdong Gaokao English scoring criteria**.
+The full score is fixed at {FULL_SCORE} points, score objectively and strictly.
 
-Evaluate strictly by these fixed dimensions for Gaokao formal letter:
-1. Task Completion (是否完成写作任务：问候、表明来意、给出具体建议、结尾客套、格式完整)
-2. Content & Relevance (内容切题、建议合理、要点齐全、无无关内容)
-3. Text Structure & Layout (书信格式、段落划分、逻辑层次、开头-主体-结尾结构)
-4. Cohesion & Logical Connection (衔接词使用、句间段间逻辑连贯、行文流畅度)
-5. Grammar & Sentence Structure (时态、语态、句式多样性、复合句使用、语法错误多少)
-6. Vocabulary & Expression (词汇准确、高级词汇运用、搭配地道、中式英语程度)
-7. Spelling & Punctuation (单词拼写、大小写、标点规范)
+Evaluate by these fixed dimensions for Gaokao advice letter:
+1. Task Completion: Greeting, purpose statement, complete advice points, proper ending and letter format.
+2. Content & Relevance: On-topic, reasonable suggestions, complete key points, no irrelevant content.
+3. Text Structure & Layout: Standard letter format, clear paragraph division, logical beginning-body-ending.
+4. Cohesion & Logical Connection: Proper use of linking words, smooth logical connection between sentences and paragraphs.
+5. Grammar & Sentence Structure: Tense accuracy, sentence variety, use of simple and compound sentences, number of grammar errors.
+6. Vocabulary & Expression: Accurate word choice, proper collocation, avoidance of Chinglish.
+7. Spelling & Punctuation: Correct spelling, capitalization and punctuation rules.
 
-Output all comments in clear English, keep objective, strict and fair as real Gaokao marking.
-Use clear structure below:
+Output all in clear English, keep strict, fair and objective like real Gaokao marking.
+Follow this fixed output structure:
 
-- Final Gaokao Score: ___ / {total_score}
-- Gaokao Level Assessment: (High / Medium / Low level according to Guangdong standard)
-- Strengths (match Gaokao scoring standard)
-- Main Problems & Errors (list specific mistakes in the letter)
-- Detailed Revision Advice (follow Gaokao requirement)
+- Final Gaokao Score: ___ / {FULL_SCORE}
+- Gaokao Level Assessment: (High / Medium / Low level under 15-point standard)
+- Strengths (accord with Guangdong Gaokao scoring rules)
+- Main Problems & Specific Errors
+- Detailed Revision Advice for Gaokao
 - Polished Gaokao-level Revised Version
 
 Student Advice Letter Text:
@@ -95,5 +98,5 @@ Student Advice Letter Text:
             )
             feedback = grade_res["output"]["choices"][0]["message"]["content"][0]["text"]
 
-        st.subheader("📊 广东高考标准 作文评分报告")
+        st.subheader("📊 广东高考标准 15分制 作文评分报告")
         st.markdown(feedback)
